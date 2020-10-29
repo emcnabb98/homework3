@@ -1,0 +1,119 @@
+#include "msp430g2553.h"
+#include "intrinsics.h"
+
+#define SW1 P1IN&BIT5
+#define SW2 P1IN&BIT6
+#define SW3 P1IN&BIT7
+
+void main(void) {
+    WDTCTL = WDTPW  + WDTHOLD;    // stop WDT
+
+
+    P1REN = BIT5 | BIT6 | BIT7;
+
+    P1OUT &= ~(BIT5 | BIT6 | BIT7);
+
+
+
+    P2DIR = 0xFF;                 // Port 2 all output
+    P2OUT = 0x00;                 // Port 2 all zero
+
+    P2SEL = 0;
+    P2SEL2 = 0;
+
+//    P2SEL  &= ~BIT6;              // Clear P2.6 in P2SEL  (by default Xin)
+//    P2SEL2 &= ~BIT6;              // Clear P2.6 in P2SEL2
+//    P2SEL  &= ~BIT7;              // Clear P2.7 in P2SEL  (by default Xin)
+//    P2SEL2 &= ~BIT7;              // Clear P2.7 in P2SEL2
+
+    // ADC configuration
+    // V+ref=3V,V-ref=0V,Channel=A0
+
+    ADC10CTL0  = ADC10ON + ADC10IE;     // Vref Vr+=3v,Vr-=VSS,
+                                        // S&Htime = 4 X ADCCLK,ADC10 on,ADC interrupts enabled
+    ADC10CTL1  = ADC10DIV_7 ;           // INCH =0000->A0,ADCCLK src = ADC10CLK,
+                                        // ADCCLK/8,Single Channel Repeat Conversion
+    ADC10AE0   = INCH_0;                // channel A0
+
+    ADC10CTL0 |= ENC + ADC10SC;         // Start Conversion
+
+    _BIS_SR(LPM0_bits + GIE);            // Go to LPM0,interrupts enabled
+}
+
+    /********************************************************************************/
+    /*                        interrupt vectors for MSP430                          */
+    /********************************************************************************/
+
+#pragma vector = ADC10_VECTOR
+__interrupt void adc10_interrupt(void) {
+
+     unsigned int adc_value = 0;
+     adc_value = ADC10MEM;
+     if(SW1)
+     {
+     //LED Bar implementation
+        if ((adc_value > 0) & (adc_value < 10))
+            P2OUT = 0x00;
+        if (adc_value >= 127)
+            P2OUT = 0x01;
+        if (adc_value >= 254)
+            P2OUT = 0x03;
+        if (adc_value >= 381)
+            P2OUT = 0x06;
+        if (adc_value >= 508)
+            P2OUT = 0x0F;
+        if (adc_value >= 635)
+            P2OUT = 0x1F;
+        if (adc_value >= 762)
+            P2OUT = 0x3F;
+        if (adc_value >= 889)
+            P2OUT = 0x6F;
+        if (adc_value >= 1016)
+            P2OUT = 0xFF;
+     }
+     else if(SW2) {
+     if ((adc_value > 0) & (adc_value < 10))
+        P2OUT = 0x00;
+        if (adc_value >= 127)
+            P2OUT = 0x01;
+        if (adc_value >= 254)
+            P2OUT = 0x02;
+        if (adc_value >= 381)
+            P2OUT = 0x04;
+        if (adc_value >= 508)
+            P2OUT = 0x08;
+        if (adc_value >= 635)
+            P2OUT = 0x10;
+        if (adc_value >= 762)
+            P2OUT = 0x20;
+        if (adc_value >= 889)
+            P2OUT = 0x40;
+        if (adc_value >= 1016)
+            P2OUT = 0x80;
+    }
+
+    else if(SW3)
+    {
+    if ((adc_value > 0) & (adc_value < 10))
+        P2OUT = 0xFF;
+    if (adc_value >= 127)
+        P2OUT = 0xFE;
+    if (adc_value >= 254)
+        P2OUT = 0xFD;
+    if (adc_value >= 381)
+        P2OUT = 0xFB;
+    if (adc_value >= 508)
+        P2OUT = 0xF7;
+    if (adc_value >= 635)
+        P2OUT = 0xEF;
+    if (adc_value >= 762)
+        P2OUT = 0xDF;
+    if (adc_value >= 889)
+        P2OUT = 0xBF;
+    if (adc_value >= 1016)
+        P2OUT = 0x7F;
+         }
+
+    ADC10CTL0 |= ENC + ADC10SC;  // Start Conversion
+
+}
